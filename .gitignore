@@ -1,0 +1,24 @@
+# Firebase Service Account (DO NOT COMMIT!)
+firebase-service-account.json
+
+# IDE
+.vs/
+.idea/
+*.user
+*.suo
+
+# Build outputs
+bin/
+obj/
+
+# Logs
+*.log
+
+# Environment
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json
+
+# OS
+.DS_Store
+Thumbs.db

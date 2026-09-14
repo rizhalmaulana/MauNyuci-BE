@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: maunyuci_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: BTS2025@Admin
+      POSTGRES_DB: mau_nyuci_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  api:
+    build: .
+    container_name: maunyuci_api
+    depends_on:
+      - db
+    environment:
+      # Mengubah Host menjadi 'db' sesuai dengan nama service di atas
+      - ConnectionStrings__DefaultConnection=Host=db;Database=mau_nyuci_db;Username=postgres;Password=BTS2025@Admin
+      - ASPNETCORE_ENVIRONMENT=Production
+    expose:
+      - "8080"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
