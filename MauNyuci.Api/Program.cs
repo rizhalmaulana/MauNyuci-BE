@@ -151,6 +151,23 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// --- 3.1. Auto-Migrate Database (Khusus Production/VPS Baru) ---
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    try
+    {
+        // Pastikan tabel dibuat jika belum ada
+        dbContext.Database.Migrate();
+        Console.WriteLine("Database Migration Berhasil Diaplikasikan!");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error saat Migration: {ex.Message}");
+    }
+}
+// ----------------------------------------------------------------
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
