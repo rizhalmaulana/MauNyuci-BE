@@ -43,8 +43,8 @@ namespace MauNyuci.Api.Models
         public double? DefaultLatitude { get; set; }
         public double? DefaultLongitude { get; set; }
 
-        [MaxLength(50)]
-        public string MembershipTier { get; set; } = "Regular";
+        public Guid? MembershipTierId { get; set; }
+        public MembershipTier? TierInfo { get; set; }
         public bool IsActive { get; set; } = true;
 
         [MaxLength(255)]

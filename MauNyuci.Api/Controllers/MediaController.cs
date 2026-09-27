@@ -65,5 +65,21 @@ namespace MauNyuci.Api.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        [HttpPost("upload-laundry-image")]
+        public async Task<IActionResult> UploadLaundryImage(IFormFile file)
+        {
+            try
+            {
+                // Upload gambar ke folder 'laundry' di Cloudflare R2
+                var imageUrl = await _mediaService.UploadImageAsync(file, "laundry");
+                
+                return Ok(new { message = "Upload berhasil", url = imageUrl });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }

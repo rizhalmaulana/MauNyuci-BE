@@ -15,6 +15,10 @@ namespace MauNyuci.Api.Attributes
 
         public void OnAuthorization(AuthorizationFilterContext context)
         {
+            // Jika method memiliki atribut [AllowAnonymous], abaikan pengecekan membership
+            var hasAllowAnonymous = context.ActionDescriptor.EndpointMetadata.Any(em => em.GetType() == typeof(Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute));
+            if (hasAllowAnonymous) return;
+
             var user = context.HttpContext.User;
 
             if (!user.Identity?.IsAuthenticated ?? true)

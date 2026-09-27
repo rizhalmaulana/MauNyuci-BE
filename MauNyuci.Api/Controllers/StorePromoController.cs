@@ -60,6 +60,21 @@ namespace MauNyuci.Api.Controllers
             }
         }
 
+        [HttpGet("store/{storeId}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetStorePromos(Guid storeId)
+        {
+            try
+            {
+                var result = await _promoService.GetPromosAsync(storeId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdatePromo(Guid id, [FromBody] StorePromoRequestDto request)
         {

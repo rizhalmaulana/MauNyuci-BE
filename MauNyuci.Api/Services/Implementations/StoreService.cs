@@ -60,6 +60,13 @@ namespace MauNyuci.Api.Services.Implementations
             return stores.Select(MapToDto);
         }
 
+        public async Task<StoreResponseDto?> GetStoreByIdAsync(Guid storeId)
+        {
+            var store = await _storeRepository.GetByIdAsync(storeId);
+            if (store == null) return null;
+            return MapToDto(store);
+        }
+
         public async Task<IEnumerable<StoreResponseDto>> GetNearbyStoresAsync(double userLat, double userLng, double radiusInKm)
         {
             var geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
@@ -145,7 +152,11 @@ namespace MauNyuci.Api.Services.Implementations
                 IsCurrentlyOpen = store.IsOpen && isTimeOpen,
                 AverageRating = store.AverageRating,
                 TotalReviews = store.TotalReviews,
-                StoreImageUrl = store.StoreImageUrl
+                StoreImageUrl = store.StoreImageUrl,
+                StorePhoneNumber = store.StorePhoneNumber,
+                HasPickupDeliveryService = store.HasPickupDeliveryService,
+                PickupDeliveryFee = store.PickupDeliveryFee,
+                MinOrderForPickup = store.MinOrderForPickup
             };
         }
     }

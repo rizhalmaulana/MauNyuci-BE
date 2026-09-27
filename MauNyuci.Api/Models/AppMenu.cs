@@ -30,8 +30,8 @@ namespace MauNyuci.Api.Models
         [MaxLength(50)]
         public string? RequiredRole { get; set; }
 
-        [MaxLength(50)]
-        public string? RequiredMembershipTier { get; set; }
+        public Guid? RequiredMembershipTierId { get; set; }
+        public MembershipTier? RequiredMembershipTier { get; set; }
 
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

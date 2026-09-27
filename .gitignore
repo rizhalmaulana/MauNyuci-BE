@@ -6,6 +6,7 @@ firebase-service-account.json
 .idea/
 *.user
 *.suo
+API_RESPONSE_FORMAT.md
 
 # Build outputs
 bin/

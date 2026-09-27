@@ -24,6 +24,11 @@ namespace MauNyuci.Api.DTOs.Order
 
         public string? PromoCode { get; set; }
 
+        public string? PickupTimeSlot { get; set; }
+        public string? DeliveryTimeSlot { get; set; }
+        public string? CustomerLaundryImageUrl { get; set; }
+        public string? LogisticsNotes { get; set; }
+
         [Required]
         public List<OrderItemRequestDto> Items { get; set; } = new List<OrderItemRequestDto>();
     }
@@ -51,6 +56,10 @@ namespace MauNyuci.Api.DTOs.Order
         public Guid? SelectedStoreBankAccountId { get; set; }
 
         public string? PromoCode { get; set; }
+
+        public string? PickupTimeSlot { get; set; }
+        public string? DeliveryTimeSlot { get; set; }
+        public string? LogisticsNotes { get; set; }
 
         [Required]
         public List<OrderItemRequestDto> Items { get; set; } = new List<OrderItemRequestDto>();
@@ -97,11 +106,14 @@ namespace MauNyuci.Api.DTOs.Order
         public DateTime? ExpectedCompletionDate { get; set; }
         public bool IsLate { get; set; }
         public DateTime? PaidAt { get; set; }
+        public string? CustomerLaundryImageUrl { get; set; }
         public List<OrderItemResponseDto> Items { get; set; } = new List<OrderItemResponseDto>();
     }
 
     public class OrderItemResponseDto
     {
+        public Guid OrderItemId { get; set; }
+        public Guid CatalogItemId { get; set; }
         public string ItemName { get; set; } = string.Empty;
         public decimal UnitPrice { get; set; }
         public decimal Quantity { get; set; }
@@ -171,5 +183,17 @@ namespace MauNyuci.Api.DTOs.Order
 
         // Ringkasan list item agar sangat ringan (hanya nama, qty, dan satuan)
         public List<OrderHeaderItemDto> ItemsSummary { get; set; } = new List<OrderHeaderItemDto>();
+    }
+
+    public class AssignDriverDto
+    {
+        [Required]
+        public Guid DriverId { get; set; }
+    }
+
+    public class ChangePaymentMethodDto
+    {
+        [Required]
+        public string NewMethod { get; set; } = string.Empty;
     }
 }

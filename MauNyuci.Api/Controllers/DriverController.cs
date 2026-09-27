@@ -1,4 +1,4 @@
-﻿using MauNyuci.Api.DTOs.Driver;
+using MauNyuci.Api.DTOs.Driver;
 using MauNyuci.Api.Services.Implementations;
 using MauNyuci.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -29,6 +29,18 @@ namespace MauNyuci.Api.Controllers
                 var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
                 var tasks = await _driverService.GetMyTasksAsync(userId);
                 return Ok(tasks);
+            }
+            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+        }
+
+        [HttpGet("tasks/{orderId}")]
+        public async Task<IActionResult> GetTaskDetail(Guid orderId)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                var taskDetail = await _driverService.GetTaskDetailAsync(userId, orderId);
+                return Ok(taskDetail);
             }
             catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
         }
@@ -86,7 +98,19 @@ namespace MauNyuci.Api.Controllers
             {
                 var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
                 await _driverService.UpdateLocationAsync(userId, request.Latitude, request.Longitude);
-                return Ok(new { message = "Lokasi berhasil diupdate." });
+                return Ok(new { message = "Lokasi berhasil diupdate" });
+            }
+            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+        }
+
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateDriverProfileDto request)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                await _driverService.UpdateProfileAsync(userId, request);
+                return Ok(new { message = "Profil kendaraan berhasil diupdate" });
             }
             catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
         }
@@ -104,6 +128,19 @@ namespace MauNyuci.Api.Controllers
             catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
         }
 
+        [HttpGet("store/{storeId}/drivers")]
+        public async Task<IActionResult> GetStoreDrivers(Guid storeId)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                var drivers = await _driverService.GetStoreDriversAsync(storeId, userId);
+                return Ok(new { message = "Data driver toko berhasil dimuat.", data = drivers });
+            }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message }); }
+            catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+        }
+
         // PERHATIAN: Endpoint ini diakses oleh Kasir/Owner Toko untuk menerima uang dari Driver
         [HttpPost("{driverId}/settle-cash")]
         public async Task<IActionResult> SettleCashToStore(Guid driverId)
@@ -116,6 +153,41 @@ namespace MauNyuci.Api.Controllers
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message }); }
             catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+        }
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetProfile()
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                var profile = await _driverService.GetProfileAsync(userId);
+                return Ok(new { success = true, message = "Success", data = profile });
+            }
+            catch (Exception ex) { return BadRequest(new { success = false, message = ex.Message }); }
+        }
+
+        [HttpPut("status")]
+        public async Task<IActionResult> UpdateStatus([FromBody] UpdateDriverStatusRequestDto request)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                await _driverService.UpdateStatusAsync(userId, request.IsAvailable);
+                return Ok(new { success = true, message = "Status ketersediaan berhasil diupdate" });
+            }
+            catch (Exception ex) { return BadRequest(new { success = false, message = ex.Message }); }
+        }
+
+        [HttpGet("tasks/history")]
+        public async Task<IActionResult> GetTaskHistory([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate)
+        {
+            try
+            {
+                var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                var history = await _driverService.GetTaskHistoryAsync(userId, startDate, endDate);
+                return Ok(new { success = true, message = "Success", data = history });
+            }
+            catch (Exception ex) { return BadRequest(new { success = false, message = ex.Message }); }
         }
     }
 

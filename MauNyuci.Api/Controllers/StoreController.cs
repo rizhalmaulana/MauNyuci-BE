@@ -49,6 +49,14 @@ namespace MauNyuci.Api.Controllers
             return Ok(stores);
         }
 
+        [HttpGet("{storeId}")]
+        public async Task<IActionResult> GetStoreById(Guid storeId)
+        {
+            var store = await _storeService.GetStoreByIdAsync(storeId);
+            if (store == null) return NotFound(new { message = "Toko tidak ditemukan" });
+            return Ok(store);
+        }
+
         [HttpGet("nearby")]
         public async Task<IActionResult> GetNearbyStores(
             [FromQuery] double lat,

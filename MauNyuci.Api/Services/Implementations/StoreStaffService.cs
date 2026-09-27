@@ -56,6 +56,21 @@ namespace MauNyuci.Api.Services.Implementations
             };
 
             _context.StoreStaffs.Add(staff);
+
+            // Jika role adalah Driver, otomatis buatkan DriverProfile
+            if (request.Role.Equals("Driver", StringComparison.OrdinalIgnoreCase))
+            {
+                var driverProfile = new DriverProfile
+                {
+                    UserId = user.Id,
+                    StoreId = storeId,
+                    VehicleNumber = "BELUM DISET", // Default value
+                    VehicleType = "Motorcycle",
+                    IsAvailable = true
+                };
+                _context.DriverProfiles.Add(driverProfile);
+            }
+
             await _context.SaveChangesAsync();
 
             return new StoreStaffResponseDto
@@ -64,7 +79,7 @@ namespace MauNyuci.Api.Services.Implementations
                 StoreId = staff.StoreId,
                 UserId = staff.UserId,
                 FullName = user.FullName,
-                Email = user.Email,
+                Email = user.Email ?? string.Empty,
                 Role = staff.Role,
                 IsActive = staff.IsActive,
                 JoinedAt = staff.JoinedAt

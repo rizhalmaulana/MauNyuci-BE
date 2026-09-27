@@ -49,17 +49,70 @@ namespace MauNyuci.Api.Controllers
         }
 
         [HttpPut("{orderId}/confirm-weight")]
-        public async Task<IActionResult> ConfirmAndWeightOrder(Guid orderId, [FromBody] OrderConfirmRequestDto request)
+        public async Task<IActionResult> UpdateWeightOrder(Guid orderId, [FromBody] OrderConfirmRequestDto request)
         {
             try
             {
-                var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-                var result = await _orderService.ConfirmAndWeightOrderAsync(orderId, request, userId);
+                var storeOwnerId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                var result = await _orderService.UpdateWeightAsync(orderId, request, storeOwnerId);
                 return Ok(result);
             }
             catch (UnauthorizedAccessException ex)
             {
                 return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPut("{orderId}/confirm-pickup")]
+        public async Task<IActionResult> ConfirmPickup(Guid orderId, [FromBody] AssignDriverDto request)
+        {
+            try
+            {
+                var storeOwnerId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                var result = await _orderService.ConfirmPickupAsync(orderId, storeOwnerId, request.DriverId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPut("{orderId}/ready-for-delivery")]
+        public async Task<IActionResult> ReadyForDelivery(Guid orderId, [FromBody] AssignDriverDto request)
+        {
+            try
+            {
+                var storeOwnerId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                var result = await _orderService.ReadyForDeliveryAsync(orderId, storeOwnerId, request.DriverId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPut("{orderId}/change-payment-method")]
+        public async Task<IActionResult> ChangePaymentMethod(Guid orderId, [FromBody] ChangePaymentMethodDto request)
+        {
+            try
+            {
+                var customerId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                var result = await _orderService.ChangePaymentMethodAsync(orderId, customerId, request.NewMethod);
+                return Ok(result);
             }
             catch (Exception ex)
             {

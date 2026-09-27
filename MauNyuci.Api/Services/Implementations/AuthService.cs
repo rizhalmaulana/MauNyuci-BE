@@ -3,6 +3,7 @@ using MauNyuci.Api.DTOs.Auth;
 using MauNyuci.Api.Models;
 using MauNyuci.Api.Services.Interfaces;
 using FirebaseAdmin.Auth;
+using MauNyuci.Api.Constants;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -45,11 +46,15 @@ namespace MauNyuci.Api.Services.Implementations
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                 Email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email,
                 AuthProvider = "Local",
-                Role = "Customer"
+                Role = "Customer",
+                MembershipTierId = MembershipTierConstants.RegularId
             };
 
             _context.User.Add(user);
             await _context.SaveChangesAsync();
+            
+            // Reload user with TierInfo for response
+            user = await _context.User.Include(u => u.TierInfo).FirstAsync(u => u.Id == user.Id);
 
             return new AuthResponseDto
             {
@@ -57,7 +62,7 @@ namespace MauNyuci.Api.Services.Implementations
                 FullName = user.FullName,
                 Role = user.Role,
                 StoreRole = null,
-                MembershipTier = user.MembershipTier,
+                MembershipTier = user.TierInfo?.Name ?? MembershipTierConstants.Regular,
                 IsProfileComplete = true
             };
         }
@@ -65,7 +70,9 @@ namespace MauNyuci.Api.Services.Implementations
         // Logika Login Manual
         public async Task<AuthResponseDto?> LoginLocalAsync(LoginRequestDto request)
         {
-            var user = await _context.User.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber);
+            var user = await _context.User
+                .Include(u => u.TierInfo)
+                .FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber);
 
             // Cek keberadaan user dan validitas password
             if (user == null || user.PasswordHash == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
@@ -87,11 +94,6 @@ namespace MauNyuci.Api.Services.Implementations
             {
                 throw new Exception("Akun ini terdaftar sebagai Customer. Tidak dapat login di aplikasi Toko.");
             }
-            if (request.AppType == "Driver" && user.Role != "Driver")
-            {
-                throw new Exception("Akun Anda bukan akun Driver.");
-            }
-
             StoreStaff? staff = null;
             if (user.Role == "StoreStaff")
             {
@@ -102,13 +104,22 @@ namespace MauNyuci.Api.Services.Implementations
                 }
             }
 
+            if (request.AppType == "Driver")
+            {
+                bool isDriver = user.Role == "Driver" || (staff != null && staff.Role == "Driver");
+                if (!isDriver)
+                {
+                    throw new Exception("Akun Anda bukan akun Driver.");
+                }
+            }
+
             return new AuthResponseDto
             {
                 Token = GenerateJwtToken(user, staff),
                 FullName = user.FullName,
                 Role = user.Role,
                 StoreRole = user.Role == "Owner" ? "Owner" : staff?.Role,
-                MembershipTier = user.MembershipTier,
+                MembershipTier = user.TierInfo?.Name ?? MembershipTierConstants.Regular,
                 IsProfileComplete = !string.IsNullOrEmpty(user.PhoneNumber)
             };
         }
@@ -116,7 +127,9 @@ namespace MauNyuci.Api.Services.Implementations
         // Data Profil
         public async Task<UserProfileResponseDto?> GetUserProfileAsync(Guid userId)
         {
-            var user = await _context.User.FirstOrDefaultAsync(u => u.Id == userId);
+            var user = await _context.User
+                .Include(u => u.TierInfo)
+                .FirstOrDefaultAsync(u => u.Id == userId);
 
             if (user == null) return null;
 
@@ -141,7 +154,7 @@ namespace MauNyuci.Api.Services.Implementations
                 Role = user.Role,
                 StoreRole = storeRole,
                 AuthProvider = user.AuthProvider,
-                MembershipTier = user.MembershipTier
+                MembershipTier = user.TierInfo?.Name ?? MembershipTierConstants.Regular
             };
         }
 
@@ -192,7 +205,7 @@ namespace MauNyuci.Api.Services.Implementations
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.FullName),
                 new Claim(ClaimTypes.Role, user.Role),
-                new Claim("MembershipTier", user.MembershipTier)
+                new Claim("MembershipTier", user.TierInfo?.Name ?? MembershipTierConstants.Regular)
             };
 
             if (staff != null)
@@ -249,7 +262,9 @@ namespace MauNyuci.Api.Services.Implementations
                 if (string.IsNullOrEmpty(email))
                     return null;
 
-                var existingUser = await _context.User.FirstOrDefaultAsync(u => u.Email == email);
+                var existingUser = await _context.User
+                    .Include(u => u.TierInfo)
+                    .FirstOrDefaultAsync(u => u.Email == email);
 
                 if (existingUser != null)
                 {
@@ -265,15 +280,19 @@ namespace MauNyuci.Api.Services.Implementations
                     {
                         throw new Exception("Akun ini terdaftar sebagai Customer. Tidak dapat login di aplikasi Toko.");
                     }
-                    if (request.AppType == "Driver" && existingUser.Role != "Driver")
-                    {
-                        throw new Exception("Akun Anda bukan akun Driver.");
-                    }
-
                     StoreStaff? staff = null;
                     if (existingUser.Role == "StoreStaff")
                     {
                         staff = await _context.StoreStaffs.FirstOrDefaultAsync(s => s.UserId == existingUser.Id);
+                    }
+
+                    if (request.AppType == "Driver")
+                    {
+                        bool isDriver = existingUser.Role == "Driver" || (staff != null && staff.Role == "Driver");
+                        if (!isDriver)
+                        {
+                            throw new Exception("Akun Anda bukan akun Driver.");
+                        }
                     }
 
                     return new AuthResponseDto
@@ -282,7 +301,7 @@ namespace MauNyuci.Api.Services.Implementations
                         FullName = existingUser.FullName,
                         Role = existingUser.Role,
                         StoreRole = existingUser.Role == "Owner" ? "Owner" : staff?.Role,
-                        MembershipTier = existingUser.MembershipTier,
+                        MembershipTier = existingUser.TierInfo?.Name ?? MembershipTierConstants.Regular,
                         IsProfileComplete = !string.IsNullOrEmpty(existingUser.PhoneNumber)
                     };
                 }
@@ -299,11 +318,15 @@ namespace MauNyuci.Api.Services.Implementations
                     PhoneNumber = request.PhoneNumber,
                     ProfilePictureUrl = picture,
                     AuthProvider = "Firebase",
-                    Role = "Customer"
+                    Role = "Customer",
+                    MembershipTierId = MembershipTierConstants.RegularId
                 };
 
                 _context.User.Add(newUser);
                 await _context.SaveChangesAsync();
+                
+                // Reload user to get TierInfo
+                newUser = await _context.User.Include(u => u.TierInfo).FirstAsync(u => u.Id == newUser.Id);
 
                 return new AuthResponseDto
                 {
@@ -311,7 +334,7 @@ namespace MauNyuci.Api.Services.Implementations
                     FullName = newUser.FullName,
                     Role = newUser.Role,
                     StoreRole = null,
-                    MembershipTier = newUser.MembershipTier,
+                    MembershipTier = newUser.TierInfo?.Name ?? MembershipTierConstants.Regular,
                     IsProfileComplete = !string.IsNullOrEmpty(newUser.PhoneNumber)
                 };
             }

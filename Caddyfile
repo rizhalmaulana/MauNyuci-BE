@@ -1,0 +1,5 @@
+# Ganti 'api.domainanda.com' dengan subdomain/domain asli Anda
+api.domainanda.com {
+    # Reverse proxy meneruskan request ke service 'api' port 8080 di docker network
+    reverse_proxy api:8080
+}

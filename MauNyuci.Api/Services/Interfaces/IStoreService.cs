@@ -5,6 +5,7 @@ namespace MauNyuci.Api.Services.Interfaces
     public interface IStoreService
     {
         Task<StoreResponseDto> CreateStoreAsync(Guid ownerId, StoreCreateRequestDto request);
+        Task<StoreResponseDto?> GetStoreByIdAsync(Guid storeId);
         Task<IEnumerable<StoreResponseDto>> GetAllStoresAsync();
         Task<IEnumerable<StoreResponseDto>> GetNearbyStoresAsync(double userLat, double userLng, double radiusInKm);
         Task<StoreResponseDto?> GetMyStoreAsync(Guid userId);

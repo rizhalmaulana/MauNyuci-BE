@@ -6,8 +6,10 @@ namespace MauNyuci.Api.Services.Interfaces
     {
         Task<OrderResponseDto> CreateOrderAsync(Guid customerId, OrderCreateRequestDto request);
         Task<OrderResponseDto> CreatePosOrderAsync(Guid userId, OrderPosRequestDto request);
-        Task<OrderResponseDto> ConfirmAndWeightOrderAsync(Guid orderId, OrderConfirmRequestDto request, Guid userId);
-
+        Task<OrderResponseDto> ConfirmPickupAsync(Guid orderId, Guid storeOwnerId, Guid pickupDriverId);
+        Task<OrderResponseDto> UpdateWeightAsync(Guid orderId, OrderConfirmRequestDto request, Guid storeOwnerId);
+        Task<OrderResponseDto> ChangePaymentMethodAsync(Guid orderId, Guid customerId, string newMethod);
+        Task<OrderResponseDto> ReadyForDeliveryAsync(Guid orderId, Guid storeOwnerId, Guid deliveryDriverId);
         // Fungsi Toko: Menerima Orderan dan siap diproses
         Task<OrderResponseDto> AcceptOrderAsync(Guid orderId, Guid userId);
 

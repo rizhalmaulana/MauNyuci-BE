@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MauNyuci.Api.Models;
+using MauNyuci.Api.Constants;
 
 namespace MauNyuci.Api.Data
 {
@@ -27,6 +28,7 @@ namespace MauNyuci.Api.Data
         public DbSet<InventoryItem> InventoryItems { get; set; }
         public DbSet<InventoryTransaction> InventoryTransactions { get; set; }
         public DbSet<PromoBanner> PromoBanners { get; set; }
+        public DbSet<MembershipTier> MembershipTiers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -38,7 +40,25 @@ namespace MauNyuci.Api.Data
                 .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.TierInfo)
+                .WithMany(m => m.Users)
+                .HasForeignKey(u => u.MembershipTierId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<AppMenu>()
+                .HasOne(a => a.RequiredMembershipTier)
+                .WithMany(m => m.RequiredForMenus)
+                .HasForeignKey(a => a.RequiredMembershipTierId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             var staticDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+            // Seeding Data for MembershipTier
+            modelBuilder.Entity<MembershipTier>().HasData(
+                new MembershipTier { Id = MembershipTierConstants.RegularId, Name = MembershipTierConstants.Regular, Description = "Layanan dasar aplikasi", MonthlyPrice = 0, CreatedAt = staticDate, UpdatedAt = staticDate },
+                new MembershipTier { Id = MembershipTierConstants.PremiumId, Name = MembershipTierConstants.Premium, Description = "Akses penuh fitur lanjutan", MonthlyPrice = 49000, CreatedAt = staticDate, UpdatedAt = staticDate }
+            );
 
             // Seeding Data for AppMenu
             modelBuilder.Entity<AppMenu>().HasData(
@@ -58,9 +78,9 @@ namespace MauNyuci.Api.Data
                 new AppMenu { Id = Guid.Parse("11111111-1111-1111-1111-111111111133"), ParentId = Guid.Parse("11111111-1111-1111-1111-111111111114"), AppType = "Store", Title = "Metode Pembayaran", Path = "/akun/pembayaran", Icon = "payment", SortOrder = 3, RequiredRole = "Owner", CreatedAt = staticDate, UpdatedAt = staticDate },
                 
                 // Premium Store Menus
-                new AppMenu { Id = Guid.Parse("11111111-1111-1111-1111-111111111115"), AppType = "Store", Title = "Analitik", Path = "/analitik", Icon = "ic_analytics", SortOrder = 5, RequiredRole = "Owner", RequiredMembershipTier = "Premium", CreatedAt = staticDate, UpdatedAt = staticDate },
-                new AppMenu { Id = Guid.Parse("11111111-1111-1111-1111-111111111116"), AppType = "Store", Title = "Promo & Voucher", Path = "/promo", Icon = "ic_discount", SortOrder = 6, RequiredRole = "Owner", RequiredMembershipTier = "Premium", CreatedAt = staticDate, UpdatedAt = staticDate },
-                new AppMenu { Id = Guid.Parse("11111111-1111-1111-1111-111111111117"), AppType = "Store", Title = "Pengeluaran", Path = "/pengeluaran", Icon = "ic_expense", SortOrder = 7, RequiredRole = "Owner", RequiredMembershipTier = "Premium", CreatedAt = staticDate, UpdatedAt = staticDate },
+                new AppMenu { Id = Guid.Parse("11111111-1111-1111-1111-111111111115"), AppType = "Store", Title = "Analitik", Path = "/analitik", Icon = "ic_analytics", SortOrder = 5, RequiredRole = "Owner", RequiredMembershipTierId = MembershipTierConstants.PremiumId, CreatedAt = staticDate, UpdatedAt = staticDate },
+                new AppMenu { Id = Guid.Parse("11111111-1111-1111-1111-111111111116"), AppType = "Store", Title = "Promo & Voucher", Path = "/promo", Icon = "ic_discount", SortOrder = 6, RequiredRole = "Owner", RequiredMembershipTierId = MembershipTierConstants.PremiumId, CreatedAt = staticDate, UpdatedAt = staticDate },
+                new AppMenu { Id = Guid.Parse("11111111-1111-1111-1111-111111111117"), AppType = "Store", Title = "Pengeluaran", Path = "/pengeluaran", Icon = "ic_expense", SortOrder = 7, RequiredRole = "Owner", RequiredMembershipTierId = MembershipTierConstants.PremiumId, CreatedAt = staticDate, UpdatedAt = staticDate },
 
                 // Customer Menus
                 new AppMenu { Id = Guid.Parse("22222222-2222-2222-2222-222222222221"), AppType = "Customer", Title = "Beranda", Path = "/home", Icon = "ic_home", SortOrder = 1, RequiredRole = "Customer", CreatedAt = staticDate, UpdatedAt = staticDate },

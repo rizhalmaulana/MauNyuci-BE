@@ -22,7 +22,7 @@ namespace MauNyuci.Api.Repositories.Implementations
                          && (string.IsNullOrEmpty(m.RequiredRole) 
                              || m.RequiredRole == role 
                              || (m.RequiredRole == "Store" && (role == "Owner" || role == "StoreStaff")))
-                         && (string.IsNullOrEmpty(m.RequiredMembershipTier) || m.RequiredMembershipTier == membershipTier))
+                         && (m.RequiredMembershipTierId == null || m.RequiredMembershipTier!.Name == membershipTier))
                 .OrderBy(m => m.SortOrder)
                 .ToListAsync();
         }

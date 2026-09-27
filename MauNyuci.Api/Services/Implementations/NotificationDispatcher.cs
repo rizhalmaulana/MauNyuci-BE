@@ -4,6 +4,7 @@ using MauNyuci.Api.Services.Interfaces;
 using MauNyuci.Api.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using MauNyuci.Api.Data;
+using System.Text.Json;
 
 namespace MauNyuci.Api.Services.Implementations
 {
@@ -40,6 +41,7 @@ namespace MauNyuci.Api.Services.Implementations
                     Title = title,
                     Message = message,
                     IsRead = false,
+                    DataPayload = data != null ? JsonSerializer.Serialize(data) : null,
                     CreatedAt = DateTime.UtcNow
                 };
                 await _notificationRepo.CreateAsync(notification);

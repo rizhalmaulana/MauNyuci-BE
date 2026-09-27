@@ -3,6 +3,7 @@ using System;
 using MauNyuci.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MauNyuci.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260918153722_AddMembershipTierMasterData")]
+    partial class AddMembershipTierMasterData
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -498,9 +501,6 @@ namespace MauNyuci.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("DataPayload")
-                        .HasColumnType("text");
-
                     b.Property<bool>("IsRead")
                         .HasColumnType("boolean");
 
@@ -548,14 +548,8 @@ namespace MauNyuci.Api.Migrations
                     b.Property<Guid?>("CustomerId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("CustomerLaundryImageUrl")
-                        .HasColumnType("text");
-
                     b.Property<string>("DeliveryAddress")
                         .HasColumnType("text");
-
-                    b.Property<Guid?>("DeliveryDriverId")
-                        .HasColumnType("uuid");
 
                     b.Property<string>("DeliveryEvidenceUrl")
                         .HasColumnType("text");
@@ -569,15 +563,14 @@ namespace MauNyuci.Api.Migrations
                     b.Property<double?>("DeliveryLongitude")
                         .HasColumnType("double precision");
 
-                    b.Property<string>("DeliveryTimeSlot")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
                     b.Property<int>("DeliveryType")
                         .HasColumnType("integer");
 
                     b.Property<decimal>("DiscountAmount")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("DriverId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("ExpectedCompletionDate")
                         .HasColumnType("timestamp with time zone");
@@ -599,14 +592,6 @@ namespace MauNyuci.Api.Migrations
                     b.Property<bool>("IsSettledToStore")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("LogisticsNotes")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<string>("OTPCode")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
                     b.Property<DateTime?>("PaidAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -622,15 +607,8 @@ namespace MauNyuci.Api.Migrations
                     b.Property<int>("PaymentStatus")
                         .HasColumnType("integer");
 
-                    b.Property<Guid?>("PickupDriverId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("PickupEvidenceUrl")
                         .HasColumnType("text");
-
-                    b.Property<string>("PickupTimeSlot")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -653,9 +631,7 @@ namespace MauNyuci.Api.Migrations
 
                     b.HasIndex("CustomerId");
 
-                    b.HasIndex("DeliveryDriverId");
-
-                    b.HasIndex("PickupDriverId");
+                    b.HasIndex("DriverId");
 
                     b.HasIndex("SelectedStoreBankAccountId");
 
@@ -1352,13 +1328,9 @@ namespace MauNyuci.Api.Migrations
                         .WithMany()
                         .HasForeignKey("CustomerId");
 
-                    b.HasOne("MauNyuci.Api.Models.DriverProfile", "DeliveryDriver")
+                    b.HasOne("MauNyuci.Api.Models.DriverProfile", "Driver")
                         .WithMany()
-                        .HasForeignKey("DeliveryDriverId");
-
-                    b.HasOne("MauNyuci.Api.Models.DriverProfile", "PickupDriver")
-                        .WithMany()
-                        .HasForeignKey("PickupDriverId");
+                        .HasForeignKey("DriverId");
 
                     b.HasOne("MauNyuci.Api.Models.StoreBankAccount", "SelectedStoreBankAccount")
                         .WithMany()
@@ -1372,9 +1344,7 @@ namespace MauNyuci.Api.Migrations
 
                     b.Navigation("Customer");
 
-                    b.Navigation("DeliveryDriver");
-
-                    b.Navigation("PickupDriver");
+                    b.Navigation("Driver");
 
                     b.Navigation("SelectedStoreBankAccount");
 

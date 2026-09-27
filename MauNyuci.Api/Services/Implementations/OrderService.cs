@@ -61,6 +61,11 @@ namespace MauNyuci.Api.Services.Implementations
                 DeliveryAddress = request.DeliveryAddress,
                 DeliveryLatitude = request.DeliveryLatitude,
                 DeliveryLongitude = request.DeliveryLongitude,
+                PickupTimeSlot = request.PickupTimeSlot,
+                DeliveryTimeSlot = request.DeliveryTimeSlot,
+                CustomerLaundryImageUrl = request.CustomerLaundryImageUrl,
+                LogisticsNotes = request.LogisticsNotes,
+                OTPCode = new Random().Next(100000, 999999).ToString(),
                 Status = OrderStatus.Pending,
                 PaymentStatus = PaymentStatus.Unpaid,
                 CreatedAt = DateTime.UtcNow
@@ -115,28 +120,28 @@ namespace MauNyuci.Api.Services.Implementations
                 var promo = await _promoService.ValidatePromoAsync(request.StoreId, request.PromoCode, totalLayanan);
                 
                 decimal maxTargetAmount = 0;
-                if (promo.DiscountTarget == "Service") maxTargetAmount = totalLayanan;
-                else if (promo.DiscountTarget == "Delivery") maxTargetAmount = newOrder.DeliveryFee;
+                if (promo!.DiscountTarget == "Service") maxTargetAmount = totalLayanan;
+                else if (promo!.DiscountTarget == "Delivery") maxTargetAmount = newOrder.DeliveryFee;
                 else maxTargetAmount = totalLayanan + newOrder.DeliveryFee;
 
                 decimal discount = 0;
-                if (promo.DiscountType == "Nominal")
+                if (promo!.DiscountType == "Nominal")
                 {
-                    discount = promo.DiscountValue;
+                    discount = promo!.DiscountValue;
                 }
-                else if (promo.DiscountType == "Percentage")
+                else if (promo!.DiscountType == "Percentage")
                 {
-                    discount = maxTargetAmount * (promo.DiscountValue / 100);
-                    if (promo.MaxDiscountAmount.HasValue && discount > promo.MaxDiscountAmount.Value)
+                    discount = maxTargetAmount * (promo!.DiscountValue / 100);
+                    if (promo!.MaxDiscountAmount.HasValue && discount > promo!.MaxDiscountAmount.Value)
                     {
-                        discount = promo.MaxDiscountAmount.Value;
+                        discount = promo!.MaxDiscountAmount.Value;
                     }
                 }
 
                 if (discount > maxTargetAmount) discount = maxTargetAmount; // Cap to max target
 
                 newOrder.DiscountAmount = discount;
-                newOrder.AppliedPromoCode = promo.PromoCode;
+                newOrder.AppliedPromoCode = promo!.PromoCode;
             }
 
             // Kalkulasi Total Keseluruhan
@@ -187,6 +192,10 @@ namespace MauNyuci.Api.Services.Implementations
                 DeliveryAddress = request.DeliveryAddress,
                 DeliveryLatitude = request.DeliveryLatitude,
                 DeliveryLongitude = request.DeliveryLongitude,
+                PickupTimeSlot = request.PickupTimeSlot,
+                DeliveryTimeSlot = request.DeliveryTimeSlot,
+                LogisticsNotes = request.LogisticsNotes,
+                OTPCode = new Random().Next(100000, 999999).ToString(),
                 SelectedStoreBankAccountId = request.SelectedStoreBankAccountId,
                 Status = request.PaymentMethod == PaymentMethod.PayNow ? OrderStatus.AwaitingPayment : OrderStatus.Washing,
                 PaymentStatus = PaymentStatus.Unpaid,
@@ -240,28 +249,28 @@ namespace MauNyuci.Api.Services.Implementations
                 var promo = await _promoService.ValidatePromoAsync(store.Id, request.PromoCode, totalLayanan);
                 
                 decimal maxTargetAmount = 0;
-                if (promo.DiscountTarget == "Service") maxTargetAmount = totalLayanan;
-                else if (promo.DiscountTarget == "Delivery") maxTargetAmount = newOrder.DeliveryFee;
+                if (promo!.DiscountTarget == "Service") maxTargetAmount = totalLayanan;
+                else if (promo!.DiscountTarget == "Delivery") maxTargetAmount = newOrder.DeliveryFee;
                 else maxTargetAmount = totalLayanan + newOrder.DeliveryFee;
 
                 decimal discount = 0;
-                if (promo.DiscountType == "Nominal")
+                if (promo!.DiscountType == "Nominal")
                 {
-                    discount = promo.DiscountValue;
+                    discount = promo!.DiscountValue;
                 }
-                else if (promo.DiscountType == "Percentage")
+                else if (promo!.DiscountType == "Percentage")
                 {
-                    discount = maxTargetAmount * (promo.DiscountValue / 100);
-                    if (promo.MaxDiscountAmount.HasValue && discount > promo.MaxDiscountAmount.Value)
+                    discount = maxTargetAmount * (promo!.DiscountValue / 100);
+                    if (promo!.MaxDiscountAmount.HasValue && discount > promo!.MaxDiscountAmount.Value)
                     {
-                        discount = promo.MaxDiscountAmount.Value;
+                        discount = promo!.MaxDiscountAmount.Value;
                     }
                 }
 
-                if (discount > maxTargetAmount) discount = maxTargetAmount;
+                if (discount > maxTargetAmount) discount = maxTargetAmount; // Cap to max target
 
                 newOrder.DiscountAmount = discount;
-                newOrder.AppliedPromoCode = promo.PromoCode;
+                newOrder.AppliedPromoCode = promo!.PromoCode;
             }
 
             // Kalkulasi Total Keseluruhan
@@ -281,78 +290,82 @@ namespace MauNyuci.Api.Services.Implementations
             return MapToResponseDto(createdOrder, store.Name);
         }
 
-        public async Task<OrderResponseDto> ConfirmAndWeightOrderAsync(Guid orderId, OrderConfirmRequestDto request, Guid userId)
+        public async Task<OrderResponseDto> UpdateWeightAsync(Guid orderId, OrderConfirmRequestDto request, Guid storeOwnerId)
         {
-            var order = await _orderRepository.GetByIdAsync(orderId);
-            if (order == null) throw new Exception("Pesanan tidak ditemukan.");
-
-            await ValidateStoreOwnershipAsync(order.StoreId, userId);
-
-            var allowedStatuses = new[] { OrderStatus.WaitingForDropOff, OrderStatus.OnPickup, OrderStatus.Confirmed };
-            if (!allowedStatuses.Contains(order.Status))
-                throw new Exception("Pesanan belum siap untuk ditimbang. Pastikan baju sudah diterima di toko.");
-
-            decimal totalLayananBaru = 0;
-
-            // Update berat/jumlah untuk setiap item layanan
-            foreach (var inputItem in request.Items)
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
-                if (inputItem.ActualQuantity <= 0) throw new Exception("Berat/Jumlah harus lebih dari 0.");
+                using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var order = await _orderRepository.GetByIdAsync(orderId);
+                if (order == null) throw new Exception("Pesanan tidak ditemukan.");
 
-                var existingItem = order.OrderItems.FirstOrDefault(i => i.Id == inputItem.OrderItemId);
-                if (existingItem != null)
+                await ValidateStoreOwnershipAsync(order.StoreId, storeOwnerId);
+
+                var allowedStatuses = new[] { OrderStatus.WaitingForDropOff, OrderStatus.OnPickup, OrderStatus.Confirmed };
+                if (!allowedStatuses.Contains(order.Status))
+                    throw new Exception("Pesanan belum siap untuk ditimbang.");
+
+                decimal totalLayananBaru = 0;
+
+                foreach (var inputItem in request.Items)
                 {
-                    // Update berat asli dari timbangan
-                    existingItem.Quantity = inputItem.ActualQuantity;
+                    if (inputItem.ActualQuantity <= 0) throw new Exception("Berat/Jumlah harus lebih dari 0.");
 
-                    // Hitung ulang SubTotal (Harga Snapshot x Berat Baru)
-                    existingItem.SubTotal = existingItem.UnitPrice * inputItem.ActualQuantity;
+                    var existingItem = order.OrderItems.FirstOrDefault(i => i.Id == inputItem.OrderItemId);
+                    if (existingItem != null)
+                    {
+                        existingItem.Quantity = inputItem.ActualQuantity;
+                        existingItem.SubTotal = existingItem.UnitPrice * inputItem.ActualQuantity;
+                    }
                 }
-            }
 
-            // Hitung ulang total layanan dari semua item
-            foreach (var item in order.OrderItems)
-            {
-                totalLayananBaru += item.SubTotal;
-            }
-
-            // Update Total Akhir di Struk Induk
-            order.TotalAmount = totalLayananBaru + order.DeliveryFee;
-
-            if (order.PaymentMethod == PaymentMethod.PayNow)
-            {
-                // (Transfer): Tahan cucian, tunggu customer upload struk
-                order.Status = OrderStatus.AwaitingPayment;
-            }
-            else
-            {
-                // (COD/PayLater): Langsung masuk mesin cuci!
-                order.Status = OrderStatus.Washing;
-            }
-
-            // Simpan Perubahan ke Database
-            var updatedOrder = await _orderRepository.UpdateOrderAsync(order);
-
-            await _hubContext.Clients.Group(orderId.ToString())
-                .SendAsync("OrderStatusUpdated", new
+                foreach (var item in order.OrderItems)
                 {
-                    OrderId = orderId,
-                    NewStatus = updatedOrder.Status.ToString(),
-                    TotalAmount = updatedOrder.TotalAmount // Agar UI langsung update harga
-                });
-
-            // Notification: SLA Reminder (1 Day Before)
-            if (updatedOrder.Status == OrderStatus.Washing && updatedOrder.ExpectedCompletionDate.HasValue)
-            {
-                var timeUntilCompletion = updatedOrder.ExpectedCompletionDate.Value - DateTime.UtcNow;
-                var delay = timeUntilCompletion - TimeSpan.FromDays(1);
-                if (delay > TimeSpan.Zero)
-                {
-                    BackgroundJob.Schedule<IReminderJobService>(x => x.SendStoreSLAReminderAsync(updatedOrder.Id), delay);
+                    totalLayananBaru += item.SubTotal;
                 }
-            }
 
-            return MapToResponseDto(updatedOrder, order.Store?.Name ?? "Toko");
+                order.TotalAmount = totalLayananBaru + order.DeliveryFee - order.DiscountAmount;
+
+                if (order.PaymentMethod == PaymentMethod.PayNow)
+                {
+                    order.Status = OrderStatus.AwaitingPayment;
+                }
+                else
+                {
+                    order.Status = OrderStatus.Washing;
+                }
+
+                var updatedOrder = await _orderRepository.UpdateOrderAsync(order);
+                await transaction.CommitAsync();
+
+                await _hubContext.Clients.Group(orderId.ToString())
+                    .SendAsync("OrderStatusUpdated", new
+                    {
+                        OrderId = orderId,
+                        NewStatus = updatedOrder.Status.ToString(),
+                        TotalAmount = updatedOrder.TotalAmount
+                    });
+
+                if (updatedOrder.Status == OrderStatus.Washing && updatedOrder.ExpectedCompletionDate.HasValue)
+                {
+                    var timeUntilCompletion = updatedOrder.ExpectedCompletionDate.Value - DateTime.UtcNow;
+                    var delay = timeUntilCompletion - TimeSpan.FromDays(1);
+                    if (delay > TimeSpan.Zero)
+                    {
+                        BackgroundJob.Schedule<IReminderJobService>(x => x.SendStoreSLAReminderAsync(updatedOrder.Id), delay);
+                    }
+                }
+
+                return MapToResponseDto(updatedOrder, order.Store?.Name ?? "Toko");
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+            });
         }
 
         public async Task<OrderResponseDto> AcceptOrderAsync(Guid orderId, Guid userId)
@@ -365,15 +378,12 @@ namespace MauNyuci.Api.Services.Implementations
             if (order.Status != OrderStatus.Pending)
                 throw new Exception("Hanya pesanan berstatus Pending yang dapat diterima.");
 
-            // Arahkan instruksi fisik berdasarkan tipe pengiriman
             if (order.DeliveryType == DeliveryType.Courier)
             {
-                order.Status = OrderStatus.OnPickup; // Sinyal kurir bergerak
+                throw new Exception("Pesanan Antar-Jemput harus menggunakan fitur Penugasan Kurir.");
             }
-            else
-            {
-                order.Status = OrderStatus.WaitingForDropOff; // Sinyal customer harus jalan ke toko
-            }
+            
+            order.Status = OrderStatus.WaitingForDropOff; // Sinyal customer harus jalan ke toko
 
             var updatedOrder = await _orderRepository.UpdateOrderAsync(order);
 
@@ -423,15 +433,12 @@ namespace MauNyuci.Api.Services.Implementations
             if (order.Status != OrderStatus.Washing)
                 throw new Exception("Hanya pesanan berstatus Washing yang bisa diselesaikan proses cucinya.");
 
-            // Arahkan status berikutnya berdasarkan tipe pengiriman
-            if (order.DeliveryType == DeliveryType.SelfService)
+            if (order.DeliveryType == DeliveryType.Courier)
             {
-                order.Status = OrderStatus.ReadyForPickup;
+                throw new Exception("Untuk pesanan Antar-Jemput, gunakan penugasan kurir pengantar.");
             }
-            else if (order.DeliveryType == DeliveryType.Courier)
-            {
-                order.Status = OrderStatus.OnDelivery;
-            }
+            
+            order.Status = OrderStatus.ReadyForPickup;
 
             var updatedOrder = await _orderRepository.UpdateOrderAsync(order);
 
@@ -694,7 +701,7 @@ namespace MauNyuci.Api.Services.Implementations
 
             await ValidateStoreOwnershipAsync(order.StoreId, storeOwnerId);
 
-            if (order.PaymentStatus != PaymentStatus.Verifying)
+            if (order.PaymentStatus != PaymentStatus.Verifying && order.PaymentStatus != PaymentStatus.Unpaid)
                 throw new Exception("Pesanan ini tidak sedang menunggu verifikasi pembayaran.");
 
             if (request.IsApproved)
@@ -723,8 +730,8 @@ namespace MauNyuci.Api.Services.Implementations
             var order = await _orderRepository.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Pesanan tidak ditemukan.");
 
-            // Validasi: Kurir yang login harus sama dengan kurir yang ditugaskan
-            if (order.DriverId != driverId)
+            // Validasi: Kurir yang login harus sama dengan kurir yang ditugaskan mengantar
+            if (order.DeliveryDriverId != driverId)
                 throw new UnauthorizedAccessException("Anda bukan kurir untuk pesanan ini.");
 
             // Validasi: Harus COD dan barang sedang diantar atau siap diambil
@@ -747,12 +754,12 @@ namespace MauNyuci.Api.Services.Implementations
             if (driver == null) throw new Exception("Profil Driver tidak ditemukan.");
 
             // Hitung jumlah TotalAmount dari orderan yang:
-            // - Dipegang oleh driver ini (DriverId)
+            // - Dipegang oleh driver pengantar ini (DeliveryDriverId)
             // - Metode bayarnya Tunai/COD (PayLater)
             // - Status bayarnya sudah lunas (Paid)
             // - TAPI belum disetorkan ke toko (IsSettledToStore == false)
             var totalUnsettled = await _context.Orders
-                .Where(o => o.DriverId == driver.Id &&
+                .Where(o => o.DeliveryDriverId == driver.Id &&
                            o.PaymentMethod == PaymentMethod.PayLater &&
                            o.PaymentStatus == PaymentStatus.Paid &&
                            o.IsSettledToStore == false)
@@ -791,8 +798,11 @@ namespace MauNyuci.Api.Services.Implementations
                 ExpectedCompletionDate = order.ExpectedCompletionDate,
                 IsLate = order.ExpectedCompletionDate.HasValue && order.ExpectedCompletionDate.Value < DateTime.UtcNow && order.Status != OrderStatus.Completed && order.Status != OrderStatus.ReadyForPickup && order.Status != OrderStatus.Cancelled,
                 PaidAt = order.PaidAt,
+                CustomerLaundryImageUrl = order.CustomerLaundryImageUrl,
                 Items = order.OrderItems.Select(i => new OrderItemResponseDto
                 {
+                    OrderItemId = i.Id,
+                    CatalogItemId = i.CatalogItemId,
                     ItemName = i.ItemName,
                     UnitPrice = i.UnitPrice,
                     Quantity = i.Quantity,
@@ -853,6 +863,111 @@ namespace MauNyuci.Api.Services.Implementations
                 if (parts[1].Equals("Jam", StringComparison.OrdinalIgnoreCase)) return value;
             }
             return 0; // Default fallback
+        }
+        public async Task<OrderResponseDto> ConfirmPickupAsync(Guid orderId, Guid storeOwnerId, Guid pickupDriverId)
+        {
+            var order = await _orderRepository.GetByIdAsync(orderId);
+            if (order == null) throw new Exception("Pesanan tidak ditemukan.");
+
+            await ValidateStoreOwnershipAsync(order.StoreId, storeOwnerId);
+
+            if (order.Status != OrderStatus.Pending)
+                throw new Exception("Hanya pesanan Pending yang bisa diassign driver jemput.");
+
+            if (order.DeliveryType != DeliveryType.Courier)
+                throw new Exception("Hanya pesanan Antar-Jemput (Courier) yang bisa diassign driver jemput.");
+
+            var pickupDriver = await _context.DriverProfiles.FirstOrDefaultAsync(d => d.Id == pickupDriverId);
+            if (pickupDriver == null)
+                throw new Exception("Driver tidak ditemukan.");
+            if (pickupDriver.StoreId != order.StoreId)
+                throw new Exception("Driver tidak terdaftar di toko ini.");
+            if (!pickupDriver.IsAvailable)
+                throw new Exception("Driver sedang nonaktif dan tidak bisa ditugaskan.");
+
+            int pickupActiveCount = await _context.Orders.CountAsync(o =>
+                (o.PickupDriverId == pickupDriverId && o.Status == OrderStatus.OnPickup) ||
+                (o.DeliveryDriverId == pickupDriverId && o.Status == OrderStatus.OnDelivery));
+            if (pickupActiveCount >= 5)
+                throw new Exception("Driver sedang memiliki terlalu banyak tugas aktif.");
+
+            order.PickupDriverId = pickupDriverId;
+            order.Status = OrderStatus.OnPickup;
+
+            var updatedOrder = await _orderRepository.UpdateOrderAsync(order);
+
+            // Notify Driver
+            var driver = await _context.DriverProfiles.Include(d => d.User).FirstOrDefaultAsync(d => d.Id == pickupDriverId);
+            if (driver != null && driver.UserId != Guid.Empty)
+            {
+                await _dispatcher.DispatchNotificationAsync(driver.UserId, "Tugas Jemput Baru!", "Anda ditugaskan untuk menjemput cucian pelanggan.");
+            }
+
+            return MapToResponseDto(updatedOrder, order.Store?.Name ?? "Toko");
+        }
+
+        public async Task<OrderResponseDto> ReadyForDeliveryAsync(Guid orderId, Guid storeOwnerId, Guid deliveryDriverId)
+        {
+            var order = await _orderRepository.GetByIdAsync(orderId);
+            if (order == null) throw new Exception("Pesanan tidak ditemukan.");
+
+            await ValidateStoreOwnershipAsync(order.StoreId, storeOwnerId);
+
+            if (order.Status != OrderStatus.Washing)
+                throw new Exception("Pesanan belum siap diantar.");
+
+            if (order.DeliveryType != DeliveryType.Courier)
+                throw new Exception("Hanya pesanan Antar-Jemput (Courier) yang bisa diassign driver antar.");
+
+            var deliveryDriver = await _context.DriverProfiles.FirstOrDefaultAsync(d => d.Id == deliveryDriverId);
+            if (deliveryDriver == null)
+                throw new Exception("Driver tidak ditemukan.");
+            if (deliveryDriver.StoreId != order.StoreId)
+                throw new Exception("Driver tidak terdaftar di toko ini.");
+            if (!deliveryDriver.IsAvailable)
+                throw new Exception("Driver sedang nonaktif dan tidak bisa ditugaskan.");
+
+            int deliveryActiveCount = await _context.Orders.CountAsync(o =>
+                (o.PickupDriverId == deliveryDriverId && o.Status == OrderStatus.OnPickup) ||
+                (o.DeliveryDriverId == deliveryDriverId && o.Status == OrderStatus.OnDelivery));
+            if (deliveryActiveCount >= 5)
+                throw new Exception("Driver sedang memiliki terlalu banyak tugas aktif.");
+
+            order.DeliveryDriverId = deliveryDriverId;
+            order.Status = OrderStatus.OnDelivery;
+
+            var updatedOrder = await _orderRepository.UpdateOrderAsync(order);
+
+            // Notify Driver
+            var driver = await _context.DriverProfiles.Include(d => d.User).FirstOrDefaultAsync(d => d.Id == deliveryDriverId);
+            if (driver != null && driver.UserId != Guid.Empty)
+            {
+                await _dispatcher.DispatchNotificationAsync(driver.UserId, "Tugas Antar Baru!", "Cucian telah selesai dan siap diantar ke pelanggan.");
+            }
+
+            return MapToResponseDto(updatedOrder, order.Store?.Name ?? "Toko");
+        }
+
+        public async Task<OrderResponseDto> ChangePaymentMethodAsync(Guid orderId, Guid customerId, string newMethod)
+        {
+            var order = await _orderRepository.GetByIdAsync(orderId);
+            if (order == null || order.CustomerId != customerId) throw new Exception("Pesanan tidak ditemukan.");
+
+            if (order.Status != OrderStatus.AwaitingPayment)
+                throw new Exception("Hanya bisa mengubah metode bayar saat menunggu pembayaran.");
+
+            if (Enum.TryParse<PaymentMethod>(newMethod, out var parsedMethod))
+            {
+                order.PaymentMethod = parsedMethod;
+                if (parsedMethod == PaymentMethod.PayLater)
+                {
+                    order.Status = OrderStatus.Washing; // Langsung dicuci jika PayLater
+                }
+                var updatedOrder = await _orderRepository.UpdateOrderAsync(order);
+                return MapToResponseDto(updatedOrder, order.Store?.Name ?? "Toko");
+            }
+            
+            throw new Exception("Metode pembayaran tidak valid.");
         }
     }
 }

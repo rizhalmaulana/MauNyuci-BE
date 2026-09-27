@@ -20,6 +20,8 @@ namespace MauNyuci.Api.Models
         
         public bool IsRead { get; set; } = false;
         
+        public string? DataPayload { get; set; }
+        
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         [ForeignKey("UserId")]

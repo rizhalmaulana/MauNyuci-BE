@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  db:
+    # Menggunakan PostGIS karena kita pakai tipe data spasial (Location)
+    image: postgis/postgis:15-3.3
+    container_name: maunyuci_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: maunyuci_admin
+      # GANTI PASSWORD INI DI VPS NANTI:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-RahasiaNegara123!}
+      POSTGRES_DB: mau_nyuci_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      # Hanya bind ke localhost demi keamanan, jangan diekspos ke publik internet
+      - "127.0.0.1:5432:5432"
+    networks:
+      - maunyuci_network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: maunyuci_api
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      # Connection String diarahkan ke service 'db' (bukan localhost)
+      - ConnectionStrings__DefaultConnection=Host=db;Database=mau_nyuci_db;Username=maunyuci_admin;Password=${DB_PASSWORD:-RahasiaNegara123!}
+    depends_on:
+      - db
+    ports:
+      # Mengikat Kestrel ke port 8080 internal
+      - "127.0.0.1:8080:8080"
+    volumes:
+      # Inject file appsettings.Production.json dari host ke dalam container (ReadOnly)
+      - ./MauNyuci.Api/appsettings.Production.json:/app/appsettings.Production.json:ro
+    networks:
+      - maunyuci_network
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: maunyuci_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    networks:
+      - maunyuci_network
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  maunyuci_network:
+    driver: bridge

@@ -1,4 +1,4 @@
-﻿using MauNyuci.Api.DTOs.Driver;
+using MauNyuci.Api.DTOs.Driver;
 using MauNyuci.Api.DTOs.Order;
 using MauNyuci.Api.Models;
 
@@ -8,6 +8,9 @@ namespace MauNyuci.Api.Services.Interfaces
     {
         // Melihat daftar jemputan (Status: OnPickup) atau antaran (Status: OnDelivery)
         Task<IEnumerable<DriverTaskResponseDto>> GetMyTasksAsync(Guid userId);
+
+        // Melihat detail task (jemput/antar)
+        Task<DriverTaskDetailResponseDto> GetTaskDetailAsync(Guid userId, Guid orderId);
 
         // Kasus Penjemputan: Driver tiba di rumah customer dan mengambil baju
         Task<OrderResponseDto> ConfirmPickupAsync(Guid orderId, Guid userId, IFormFile evidenceFile);
@@ -19,5 +22,14 @@ namespace MauNyuci.Api.Services.Interfaces
         Task UpdateLocationAsync(Guid userId, double lat, double lng);
         Task<OrderResponseDto> ConfirmDeliveryWithPhotoAsync(Guid orderId, Guid userId, IFormFile evidenceFile, string note);
         Task<DriverSettlement> SettleCashToStoreAsync(Guid driverId, Guid storeOwnerId);
+
+        // Daftar driver milik satu toko (untuk dropdown assign kurir di maunyuci_store)
+        Task<IEnumerable<StoreDriverResponseDto>> GetStoreDriversAsync(Guid storeId, Guid requesterUserId);
+
+        // Update profil driver (Plat Nomor, Tipe, Ketersediaan)
+        Task UpdateProfileAsync(Guid userId, UpdateDriverProfileDto request);
+        Task<DriverProfileResponseDto> GetProfileAsync(Guid userId);
+        Task UpdateStatusAsync(Guid userId, bool isAvailable);
+        Task<DriverTaskHistoryResponseDto> GetTaskHistoryAsync(Guid userId, DateTime? startDate, DateTime? endDate);
     }
 }

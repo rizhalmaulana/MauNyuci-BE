@@ -103,10 +103,27 @@ namespace MauNyuci.Api.Models
         public string? CancellationReason { get; set; } // Menyimpan alasan kenapa dibatalkan
         public DateTime? CancelledAt { get; set; }      // Kapan dibatalkan
 
-        public Guid? DriverId { get; set; }
+        public Guid? PickupDriverId { get; set; }
+        [ForeignKey("PickupDriverId")]
+        public DriverProfile? PickupDriver { get; set; }
 
-        [ForeignKey("DriverId")]
-        public DriverProfile? Driver { get; set; }
+        public Guid? DeliveryDriverId { get; set; }
+        [ForeignKey("DeliveryDriverId")]
+        public DriverProfile? DeliveryDriver { get; set; }
+
+        [MaxLength(50)]
+        public string? PickupTimeSlot { get; set; }
+
+        [MaxLength(50)]
+        public string? DeliveryTimeSlot { get; set; }
+
+        public string? CustomerLaundryImageUrl { get; set; }
+
+        [MaxLength(255)]
+        public string? LogisticsNotes { get; set; }
+
+        [MaxLength(10)]
+        public string? OTPCode { get; set; }
 
         public string? PickupEvidenceUrl { get; set; }
         public string? DeliveryEvidenceUrl { get; set; }

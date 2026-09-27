@@ -12,6 +12,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using System.Globalization;
+using Microsoft.AspNetCore.Localization;
 using Hangfire;
 using Hangfire.PostgreSql;
 
@@ -158,6 +160,16 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = string.Empty; // Agar langsung terbuka di localhost:xxxx
     });
 }
+
+// 3.5. Force Culture to en-US to fix double/decimal parsing (dot vs comma)
+var defaultCulture = new CultureInfo("en-US");
+var localizationOptions = new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture(defaultCulture),
+    SupportedCultures = new List<CultureInfo> { defaultCulture },
+    SupportedUICultures = new List<CultureInfo> { defaultCulture }
+};
+app.UseRequestLocalization(localizationOptions);
 
 app.UseHttpsRedirection();
 

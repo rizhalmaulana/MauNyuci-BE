@@ -55,5 +55,10 @@ namespace MauNyuci.Api.DTOs.Store
         public double AverageRating { get; set; }
         public int TotalReviews { get; set; }
         public string? StoreImageUrl { get; set; }
+
+        public string? StorePhoneNumber { get; set; }
+        public bool HasPickupDeliveryService { get; set; }
+        public decimal PickupDeliveryFee { get; set; }
+        public decimal MinOrderForPickup { get; set; }
     }
 }
